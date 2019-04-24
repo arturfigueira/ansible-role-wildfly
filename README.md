@@ -17,9 +17,10 @@ Defaults:
     wildfly_group: wildfly
 
     wildfly_base_download_url: http://download.jboss.org/wildfly
-    wildfly_name: wildfly-{{ wildfly_version }}
-    wildfly_download_file: "{{ wildfly_name }}.tar.gz"
+    wildfly_name: wildfly
+    wildfly_file_name: wildfly-{{ wildfly_version }}
     wildfly_download_validate_certs: "yes"
+    wildfly_download_file: "{{ wildfly_file_name }}.tar.gz"
     wildfly_download_url: "{{ wildfly_base_download_url }}/{{ wildfly_version }}/\
                         {{ wildfly_download_file }}"
     wildfly_download_dir: /tmp
@@ -29,12 +30,12 @@ Defaults:
 
     wildfly_temp_dir: /tmp/wildfly
 
-    wildfly_console_log_dir: "/var/log/wildfly"
+    wildfly_console_log_dir: "/var/log/{{ wildfly_name }}"
     wildfly_console_log_file: "console.log"
     wildfly_console_log: "{{ wildfly_console_log_dir }}/\
                         {{ wildfly_console_log_file }}"
 
-    wildfly_conf_dir: /etc/wildfly
+    wildfly_conf_dir: /etc/{{ wildfly_name }}
     wildfly_standalone_config_file: standalone.xml
     wildfly_standalone_config_path: "{{ wildfly_dir }}/standalone/configuration/\
                                     {{ wildfly_standalone_config_file }}"
@@ -68,6 +69,8 @@ Defaults:
         <https-listener name="https-server" socket-binding="https"
         security-realm="ManagementRealm"/>'
 
+    wildfly_temp_dir: /tmp/{{ wildfly_name }}
+    
     # Manually defined variables
     # wildfly_app_users:
     #   - name: user
