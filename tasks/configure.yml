@@ -20,19 +20,32 @@
     - restart wildfly
     - change standalone data mode
 
-- name: Create symlink to /etc/default/wildfly.conf
+- name: Create symlink to /etc/default
   file:
     state: link
     src: '{{ wildfly_conf_dir }}/wildfly.conf'
-    dest: /etc/default/wildfly.conf
+    dest: /etc/default/{{ wildfly_name }}.conf
 
 - include: configure-properties.yml
+
+- name: Create custom init script
+  file:
+    src: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/wildfly-init-{{ ansible_os_family | lower }}.sh'
+    dest: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
+    owner: '{{ wildfly_user }}'
+    state: hard
+
+- name: Adjust init script for actual installation and configuration folders
+  replace:
+    path: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
+    regexp: '\/wildfly'
+    replace: '/{{ wildfly_name }}'
 
 - name: Create symlink to upstream init script
   file:
     state: link
-    src: '{{ wildfly_install_dir }}/wildfly/{{ wildfly_init_src_path }}/init.d/wildfly-init-{{ ansible_os_family | lower }}.sh'
-    dest: '{{ wildfly_init_dir }}/wildfly'
+    src: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
+    dest: '{{ wildfly_init_dir }}/{{ wildfly_service_name }}'
   when: ansible_service_mgr in ['init', 'upstart']
   notify:
     - restart wildfly
@@ -85,7 +98,7 @@
 - block:
     - name: Enable and start the service
       service:
-        name: wildfly
+        name: "{{ wildfly_service_name }}"
         state: started
         enabled: yes
     - name: Wait for wildfly to start

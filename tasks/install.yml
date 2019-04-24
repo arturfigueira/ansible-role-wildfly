@@ -36,7 +36,10 @@
     group: '{{ wildfly_group }}'
     mode: '{{ wildfly_dir_mode }}'
     copy: no
-    creates: "{{ wildfly_dir }}/bin/standalone.sh"
+    creates: "{{ wildfly_install_dir }}/{{ wildfly_file_name }}/bin/standalone.sh"
+
+- name: Rename Wildfly Folder
+  command: mv {{ wildfly_install_dir }}/{{ wildfly_file_name }} {{ wildfly_dir }}
 
 - name: Create symlink to installed version
   file:
