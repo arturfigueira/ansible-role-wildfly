@@ -1,5 +1,6 @@
 ---
 # task file for wildfly
+- include: pre-install.yml
 
 - include: install.yml
 
