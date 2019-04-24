@@ -139,3 +139,12 @@
     replace: 'jboss.bind.address.unsecure:{{ wildfly_bind_address_unsecure }}'
   notify:
     - restart wildfly
+
+- name: Update Debug Port
+  replace:
+    path: "{{ wildfly_dir }}/bin/standalone.conf"
+    regexp: '(transport=dt_socket,.*address=)\d+(,?.*)$'
+    replace: '\g<1>{{ wildfly_debug_port }}\g<2>'
+  when: wildfly_debug_port
+  notify:
+    - restart wildfly
