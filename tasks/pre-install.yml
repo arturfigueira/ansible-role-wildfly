@@ -1,0 +1,19 @@
+---
+- block:
+  - name: Ensure Wildfly group is presented
+    group:
+      name: "{{ wildfly_group }}"
+      state: present
+
+  - name: Add Wildfly User to OS
+    user:
+      name: "{{ wildfly_user }}"
+      shell: "{{ widlfly_user_shell }}"
+      uid: 501
+      home: /home/{{ wildfly_user }}
+      groups: "{{ wildfly_group }}"
+      append: yes
+  when: wildfly_manage_user
+
+- name: Install libselinux-python
+  yum: name=libselinux-python

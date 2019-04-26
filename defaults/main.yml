@@ -12,8 +12,9 @@ wildfly_version: 10.0.0.Final
 wildfly_major_v: "{{ wildfly_version.partition('.')[0] }}"
 
 wildfly_manage_user: true
-wildfly_user: wildfly
-wildfly_group: wildfly
+wildfly_user: jboss
+widlfly_user_shell: /bin/bash
+wildfly_group: jboss
 
 wildfly_base_download_url: http://download.jboss.org/wildfly
 wildfly_name: wildfly
@@ -48,12 +49,13 @@ wildfly_service_name: "{{ wildfly_name }}"
 wildfly_init_dir: /etc/init.d
 wildfly_systemd_dir: /usr/lib/systemd/system
 
-wildfly_bind_address: 0.0.0.0
-wildfly_management_bind_address: 0.0.0.0
+wildfly_bind_address: 127.0.0.1
+wildfly_management_bind_address: 127.0.0.1
 wildfly_manage_http_port: 9990
 wildfly_manage_https_port: 9993
 wildfly_http_port: 8080
 wildfly_https_port: 8443
+wildfly_debug_port: ''
 wildfly_bind_address_unsecure: ''
 wildfly_messaging_group_address: ''
 

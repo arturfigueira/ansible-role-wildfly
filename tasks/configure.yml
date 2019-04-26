@@ -112,3 +112,39 @@
     path: '{{ wildfly_download_dir }}/{{ wildfly_download_file }}'
     state: absent
   when: wildfly_remove_download_file
+
+#This is a workaround for Wildfly versions <9
+#Versions bellow 9 dosen't work properly with JBOSS_OPTIONS for binding address
+#So, we change it directly at standalone xml config file
+- name: Update Public Bind Address
+  replace:
+    path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+    regexp: 'jboss.bind.address\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
+    replace: 'jboss.bind.address:{{ wildfly_bind_address }}'
+  notify:
+    - restart wildfly
+
+- name: Update Management Bind Address
+  replace:
+    path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+    regexp: 'jboss.bind.address.management\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
+    replace: 'jboss.bind.address.management:{{ wildfly_management_bind_address }}'
+  notify:
+    - restart wildfly
+
+- name: Update Unsecure Bind Address
+  replace:
+    path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+    regexp: 'jboss.bind.address.unsecure\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
+    replace: 'jboss.bind.address.unsecure:{{ wildfly_bind_address_unsecure }}'
+  notify:
+    - restart wildfly
+
+- name: Update Debug Port
+  replace:
+    path: "{{ wildfly_dir }}/bin/standalone.conf"
+    regexp: '(transport=dt_socket,.*address=)\d+(,?.*)$'
+    replace: '\g<1>{{ wildfly_debug_port }}\g<2>'
+  when: wildfly_debug_port
+  notify:
+    - restart wildfly
