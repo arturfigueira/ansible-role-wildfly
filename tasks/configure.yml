@@ -1,99 +1,169 @@
----
-# task file for wildfly
+# ---
+# # task file for wildfly
+#
+# - name: Create wildfly etc directory
+#   file:
+#     path: '{{ wildfly_conf_dir }}'
+#     state: directory
+#     owner: '{{ wildfly_user }}'
+#     group: '{{ wildfly_group }}'
+#     mode: '0750'
+#
+# - name: Copy wildfly configuration
+#   template:
+#     src: wildfly.conf.j2
+#     dest: '{{ wildfly_conf_dir }}/wildfly.conf'
+#     owner: root
+#     group: root
+#     mode: '0640'
+#   notify:
+#     - restart wildfly
+#     - change standalone data mode
+#
+# - name: Create symlink to /etc/default
+#   file:
+#     state: link
+#     src: '{{ wildfly_conf_dir }}/wildfly.conf'
+#     dest: /etc/default/{{ wildfly_name }}.conf
+#
+# - include: configure-properties.yml
+#
+# - name: Create custom init script
+#   file:
+#     src: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/wildfly-init-{{ ansible_os_family | lower }}.sh'
+#     dest: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
+#     owner: '{{ wildfly_user }}'
+#     state: hard
+#
+# - name: Adjust init script for actual installation and configuration folders
+#   replace:
+#     path: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
+#     regexp: '\/wildfly'
+#     replace: '/{{ wildfly_name }}'
+#
+# - name: Create symlink to upstream init script
+#   file:
+#     state: link
+#     src: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
+#     dest: '{{ wildfly_init_dir }}/{{ wildfly_service_name }}'
+#   when: ansible_service_mgr in ['init', 'upstart']
+#   notify:
+#     - restart wildfly
+#     - change standalone data mode
+#
+# - block:
+#   - name: Copy wildfly systemd unit file
+#     template: src=wildfly.service.j2 dest={{ wildfly_systemd_dir }}/wildfly.service owner=root
+#               group=root mode=0640
+#     notify:
+#         - restart wildfly
+#         - change standalone data mode
+#   - name: systemd reload
+#     systemd:
+#       daemon_reload: yes
+#   when: ansible_service_mgr == 'systemd'
+#
+# - block:
+#   - name: Open wildfly management http tcp port
+#     firewalld:
+#       port: '{{ wildfly_manage_http_port }}/tcp'
+#       permanent: yes
+#       immediate: yes
+#       state: enabled
+#
+#   - name: Open wildfly management https tcp port
+#     firewalld:
+#       port: '{{ wildfly_manage_https_port }}/tcp'
+#       permanent: yes
+#       immediate: yes
+#       state: enabled
+#
+#   - name: Open wildfly http tcp port
+#     firewalld:
+#       port: '{{ wildfly_http_port }}/tcp'
+#       permanent: yes
+#       immediate: yes
+#       state: enabled
+#
+#   - name: Open wildfly https tcp port
+#     firewalld:
+#       port: '{{ wildfly_https_port }}/tcp'
+#       permanent: yes
+#       immediate: yes
+#       state: enabled
+#   when: ansible_distribution_version|version_compare(7, '=') and wildfly_manage_firewall
+#
+# - meta: flush_handlers
 
-- name: Create wildfly etc directory
-  file:
-    path: '{{ wildfly_conf_dir }}'
-    state: directory
-    owner: '{{ wildfly_user }}'
-    group: '{{ wildfly_group }}'
-    mode: '0750'
-
-- name: Copy wildfly configuration
-  template:
-    src: wildfly.conf.j2
-    dest: '{{ wildfly_conf_dir }}/wildfly.conf'
-    owner: root
-    group: root
-    mode: '0640'
-  notify:
-    - restart wildfly
-    - change standalone data mode
-
-- name: Create symlink to /etc/default
-  file:
-    state: link
-    src: '{{ wildfly_conf_dir }}/wildfly.conf'
-    dest: /etc/default/{{ wildfly_name }}.conf
-
-- include: configure-properties.yml
-
-- name: Create custom init script
-  file:
-    src: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/wildfly-init-{{ ansible_os_family | lower }}.sh'
-    dest: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
-    owner: '{{ wildfly_user }}'
-    state: hard
-
-- name: Adjust init script for actual installation and configuration folders
-  replace:
-    path: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
-    regexp: '\/wildfly'
-    replace: '/{{ wildfly_name }}'
-
-- name: Create symlink to upstream init script
-  file:
-    state: link
-    src: '{{ wildfly_dir }}/{{ wildfly_init_src_path }}/init.d/{{ wildfly_service_name }}.sh'
-    dest: '{{ wildfly_init_dir }}/{{ wildfly_service_name }}'
-  when: ansible_service_mgr in ['init', 'upstart']
-  notify:
-    - restart wildfly
-    - change standalone data mode
-
+#This is a workaround for Wildfly versions <9
+#Versions bellow 9 dosen't work properly with JBOSS_OPTIONS for binding address and port
+#So, we change it directly at standalone xml config file
 - block:
-  - name: Copy wildfly systemd unit file
-    template: src=wildfly.service.j2 dest={{ wildfly_systemd_dir }}/wildfly.service owner=root
-              group=root mode=0640
+  - name: Update Manage HTTP Port
+    replace:
+      path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+      regexp: '(name="management-http".*port:)\d+'
+      replace: '\g<1>{{ wildfly_manage_http_port }}'
     notify:
-        - restart wildfly
-        - change standalone data mode
-  - name: systemd reload
-    systemd:
-      daemon_reload: yes
-  when: ansible_service_mgr == 'systemd'
+      - restart wildfly
 
-- block:
-  - name: Open wildfly management http tcp port
-    firewalld:
-      port: '{{ wildfly_manage_http_port }}/tcp'
-      permanent: yes
-      immediate: yes
-      state: enabled
+  - name: Update Manage HTTP Port
+    replace:
+      path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+      regexp: '(name="management-https".*port:)\d+'
+      replace: '\g<1>{{ wildfly_manage_https_port }}'
+    notify:
+      - restart wildfly
 
-  - name: Open wildfly management https tcp port
-    firewalld:
-      port: '{{ wildfly_manage_https_port }}/tcp'
-      permanent: yes
-      immediate: yes
-      state: enabled
+  - name: Update HTTP Port
+    replace:
+      path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+      regexp: '(name="http".*port:)\d+'
+      replace: '\g<1>{{ wildfly_http_port }}'
+    notify:
+      - restart wildfly
 
-  - name: Open wildfly http tcp port
-    firewalld:
-      port: '{{ wildfly_http_port }}/tcp'
-      permanent: yes
-      immediate: yes
-      state: enabled
+  - name: Update HTTP Port
+    replace:
+      path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+      regexp: '(name="https".*port:)\d+'
+      replace: '\g<1>{{ wildfly_https_port }}'
+    notify:
+      - restart wildfly
 
-  - name: Open wildfly https tcp port
-    firewalld:
-      port: '{{ wildfly_https_port }}/tcp'
-      permanent: yes
-      immediate: yes
-      state: enabled
-  when: ansible_distribution_version|version_compare(7, '=') and wildfly_manage_firewall
+  - name: Update Public Bind Address
+    replace:
+      path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+      regexp: 'jboss.bind.address\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
+      replace: 'jboss.bind.address:{{ wildfly_bind_address }}'
+    notify:
+      - restart wildfly
 
-- meta: flush_handlers
+  - name: Update Management Bind Address
+    replace:
+      path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+      regexp: 'jboss.bind.address.management\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
+      replace: 'jboss.bind.address.management:{{ wildfly_management_bind_address }}'
+    notify:
+      - restart wildfly
+
+  - name: Update Unsecure Bind Address
+    replace:
+      path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
+      regexp: 'jboss.bind.address.unsecure\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
+      replace: 'jboss.bind.address.unsecure:{{ wildfly_bind_address_unsecure }}'
+    notify:
+      - restart wildfly
+  when: wildfly_major_v | version_compare('9', '<')
+
+- name: Update Debug Port
+  replace:
+    path: "{{ wildfly_dir }}/bin/standalone.conf"
+    regexp: '(transport=dt_socket,.*address=)\d+(,?.*)$'
+    replace: '\g<1>{{ wildfly_debug_port }}\g<2>'
+  when: wildfly_debug_port
+  notify:
+    - restart wildfly
 
 - block:
     - name: Enable and start the service
@@ -112,39 +182,3 @@
     path: '{{ wildfly_download_dir }}/{{ wildfly_download_file }}'
     state: absent
   when: wildfly_remove_download_file
-
-#This is a workaround for Wildfly versions <9
-#Versions bellow 9 dosen't work properly with JBOSS_OPTIONS for binding address
-#So, we change it directly at standalone xml config file
-- name: Update Public Bind Address
-  replace:
-    path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
-    regexp: 'jboss.bind.address\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
-    replace: 'jboss.bind.address:{{ wildfly_bind_address }}'
-  notify:
-    - restart wildfly
-
-- name: Update Management Bind Address
-  replace:
-    path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
-    regexp: 'jboss.bind.address.management\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
-    replace: 'jboss.bind.address.management:{{ wildfly_management_bind_address }}'
-  notify:
-    - restart wildfly
-
-- name: Update Unsecure Bind Address
-  replace:
-    path: "{{ wildfly_dir }}/standalone/configuration/standalone.xml"
-    regexp: 'jboss.bind.address.unsecure\:\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
-    replace: 'jboss.bind.address.unsecure:{{ wildfly_bind_address_unsecure }}'
-  notify:
-    - restart wildfly
-
-- name: Update Debug Port
-  replace:
-    path: "{{ wildfly_dir }}/bin/standalone.conf"
-    regexp: '(transport=dt_socket,.*address=)\d+(,?.*)$'
-    replace: '\g<1>{{ wildfly_debug_port }}\g<2>'
-  when: wildfly_debug_port
-  notify:
-    - restart wildfly
